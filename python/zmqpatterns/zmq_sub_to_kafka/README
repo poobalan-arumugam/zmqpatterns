@@ -1,0 +1,1 @@
+Read from SUB sockets on ZMQ and forward onto another zmq socket for delivery to Kafka.
