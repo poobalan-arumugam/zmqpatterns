@@ -17,11 +17,17 @@ def get_options():
                         help='kafka server to connect to')
     parser.add_argument('--kafka_topic',
                         help='kafka topic to publish to')
+    parser.add_argument('--zmq_listener_address',
+                        help='listen for data via zmq socket on this address')
 
     parsed = parser.parse_args()
 
     if parsed.kafka_server is None:
         raise Exception("Please specify --kafka_server")
+    if parsed.kafka_topic is None:
+        raise Exception("Please specify --kafka_topic")
+    if parsed.zmq_listener_address is None:
+        raise Exception("Please specify --zmq_listener_address")
 
     return parsed
 
@@ -49,15 +55,17 @@ def commit(kafka_producer, mcollected):
             break
 
 
-def run():
-    options = get_options()
+def from_zmq_to_kafka(zmq_listener_address, kafka_server_hosts,
+                      kafka_topic_name, continue_running=None,
+                      zmq_context=None):
+    kafka_client = pykafka.KafkaClient(hosts=kafka_server_hosts)
+    topic = kafka_client.topics[kafka_topic_name.encode("utf8")]
 
-    kafka_client = pykafka.KafkaClient(hosts=options.kafka_server)
-    topic = kafka_client.topics[options.kafka_topic.encode("utf8")]
-
-    context = zmq.Context()
+    context = zmq_context
+    if context is None:
+        context = zmq.Context()
     recv_socket = context.socket(zmq.ROUTER)
-    recv_socket.bind("tcp://127.0.0.1:10001")
+    recv_socket.bind(zmq_listener_address)
 
     poller = zmq.Poller()
     poller.register(recv_socket, zmq.POLLIN)
@@ -102,6 +110,17 @@ def run():
                 if len(mcollected) > 0:
                     commit(kafka_producer, mcollected)
                 pass
+
+                if continue_running:
+                    if not continue_running():
+                        break
+
+def run():
+    options = get_options()
+
+    from_zmq_to_kafka(zmq_listener_address=options.zmq_listener_address,
+                      kafka_server_hosts=options.kafka_server,
+                      kafka_topic_name=options.kafka_topic)
 
 
 
