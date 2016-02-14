@@ -8,7 +8,7 @@ class PubSubHub(object):
         self.context = context
         # TODO: Maybe another that uses XPUB/XSUB?
         self.sub_socket = self.context.socket(zmq.SUB)
-        self.sub_socket.setsockopt(zmq.SUBSCRIBE, "")
+        self.sub_socket.setsockopt(zmq.SUBSCRIBE, b"")
         self.pub_socket = self.context.socket(zmq.PUB)
         self.control_socket = self.context.socket(zmq.ROUTER)
         self.control_socket.bind(control_address)
@@ -20,10 +20,10 @@ class PubSubHub(object):
         self.quit = False
 
         self.actions = {
-            "sub-connect": self.handle_connect_sub,
-            "pub-bind": self.handle_bind_pub,
-            "ping": self.handle_ping,
-            "quit": self.handle_quit_request,
+            b"sub-connect": self.handle_connect_sub,
+            b"pub-bind": self.handle_bind_pub,
+            b"ping": self.handle_ping,
+            b"quit": self.handle_quit_request,
         }
 
     def run(self):
@@ -50,17 +50,17 @@ class PubSubHub(object):
         action_string = frames[1]
 
         action = self.actions.get(action_string, None)
-        response = ["fail"]
+        response = [b"fail"]
         if action is not None:
             try:
                 response = action(socket, sender, frames[2:])
-                response = [str(n) for n in response]
+                response = [str(n).encode("utf8") for n in response]
             except Exception as ex:
                 logger.error(ex)
-                response = ["error", str(ex)]
+                response = [b"error", str(ex).encode("utf8")]
         else:
             logger.error("Unknown action: %s %s", action_string, frames)
-            response = ["error", "Unknown Action"]
+            response = [b"error", b"Unknown Action"]
 
         socket.send_multipart([sender, action_string] + response)
 

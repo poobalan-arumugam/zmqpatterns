@@ -23,10 +23,10 @@ class DealerRouterHub(object):
         self.quit = False
 
         self.actions = {
-            "d-connect": self.handle_connect_dealer,
-            "r-bind": self.handle_bind_router,
-            "ping": self.handle_ping,
-            "quit": self.handle_quit_request,
+            b"d-connect": self.handle_connect_dealer,
+            b"r-bind": self.handle_bind_router,
+            b"ping": self.handle_ping,
+            b"quit": self.handle_quit_request,
         }
 
         self.log_ping = False
@@ -68,21 +68,21 @@ class DealerRouterHub(object):
         sender = frames[0]
         action_string = frames[1]
 
-        if action_string == "ping":
+        if action_string == b"ping":
             if self.log_ping:
                 logger.debug("Control Command: %s", frames)
         else:
             logger.debug("Control Command: %s", frames)
 
         action = self.actions.get(action_string, None)
-        response = ["fail"]
+        response = [b"fail"]
         if action is not None:
             try:
                 response = action(socket, sender, frames[2:])
-                response = [str(n) for n in response]
+                response = [str(n).encode("utf8") for n in response]
             except Exception as ex:
                 logger.error(ex)
-                response = ["error", str(ex)]
+                response = [b"error", str(ex).encode("utf8")]
         else:
             logger.error("Unknown action: %s %s", action_string, frames)
             response = ["error", "Unknown Action"]
